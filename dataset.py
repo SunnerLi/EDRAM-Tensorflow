@@ -11,8 +11,8 @@ def load(file_name='mnist_clusttered.hdf5'):
         Ret:    The images, label and location parameters
     """
     clustter_file = h5py.File('mnist_clusttered.hdf5', 'r')
-    return theanoOrder2TensorflowOrder(clustter_file['features']),
-            clustter_file['labels'],
+    return theanoOrder2TensorflowOrder(clustter_file['features']), \
+            clustter_file['labels'], \
             clustter_file['locations']
 
 def theanoOrder2TensorflowOrder(_tensor):
