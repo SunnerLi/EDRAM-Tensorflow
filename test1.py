@@ -1,4 +1,6 @@
 import numpy as np
+import theano.tensor as T
+
 
 batch_size=2
 num_channel = 1
@@ -22,3 +24,7 @@ origin_batch = np.asarray(
 )
 print(np.shape(np.swapaxes(np.swapaxes(origin, 1, 2), 2, 3)))
 print(np.swapaxes(np.swapaxes(origin, 1, 2), 2, 3))
+
+
+base = T.repeat(T.arange(32, dtype='int64') * 10000, 40 * 40)
+print(base.eval())

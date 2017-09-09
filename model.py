@@ -12,15 +12,18 @@ def toL(_tensor):
             continue
 
 class GlimpseNetwork(object):
-    def __init__(self):
-        pass
+    def __init__(self, image_ph):
+        self.image_ph = image_ph
 
-    def __call__(self, _action, attention_result):
+    def __call__(self, _action):
         # ------------------------------
         #  Construct the first part
         # ------------------------------
+        # Spatial transformation
+        self.network = tl.layers.SpatialTransformer2dAffineLayer(toL(self.image_ph), toL(_action))
+
         # Conv1
-        self.network = tl.layers.Conv2dLayer(toL(attention_result), shape = [3, 3, 1, 16], name='glimpse_conv1')
+        self.network = tl.layers.Conv2dLayer(self.network, shape = [3, 3, 1, 16], name='glimpse_conv1')
         self.network = tl.layers.BatchNormLayer(self.network, name='glimpse_conv1_bn')
         self.network = tf.nn.relu(self.network.outputs)
 
@@ -68,7 +71,7 @@ class GlimpseNetwork(object):
 
         # Combine
         self.network = self.network_conv_part * self.network_loc_part
-        return self.network.outputs
+        return self.network
 
 class RecurrentNetwork(object):
     def __init__(self):
@@ -92,13 +95,14 @@ class ClassificationNetwork(object):
         pass
 
     def __call__(self, lstm_result):
-        self.network = tl.layers.DenseLayer(toL(lstm_result), n_units = 1024, name='classification_fc1')
+        self.network = tf.reshape(lstm_result, [-1, tf.cast(lstm_result.shape[1] * lstm_result.shape[2], tf.int32)])
+        self.network = tl.layers.DenseLayer(toL(self.network), n_units = 1024, name='classification_fc1')
         self.network = tl.layers.BatchNormLayer(self.network, name='classification_fc1_bn')
         self.network = tf.nn.relu(self.network.outputs)
-        self.network = tl.layers.DenseLayer(toL(lstm_result), n_units = 1024, name='classification_fc2')
+        self.network = tl.layers.DenseLayer(toL(self.network), n_units = 1024, name='classification_fc2')
         self.network = tl.layers.BatchNormLayer(self.network, name='classification_fc2_bn')
         self.network = tf.nn.relu(self.network.outputs)
-        self.network = tl.layers.DenseLayer(toL(lstm_result), n_units = 10, act = tf.nn.softmax, name='classification_fc3')
+        self.network = tl.layers.DenseLayer(toL(self.network), n_units = 10, act = tf.nn.softmax, name='classification_fc3')
         return self.network.outputs
 
 class EmissionNetwork(object):
@@ -106,12 +110,14 @@ class EmissionNetwork(object):
         pass
 
     def __call__(self, lstm_result):
-        self.network = tl.layers.DenseLayer(toL(lstm_result), n_units = 1024, act = tf.nn.tanh, name='emission_fc')
+        self.network = tf.reshape(lstm_result, [-1, tf.cast(lstm_result.shape[1] * lstm_result.shape[2], tf.int32)])
+        self.network = tl.layers.DenseLayer(toL(self.network), n_units = 1024, act = tf.nn.tanh, name='emission_fc')
         self.network = self.network.outputs
         self.network = tf.stack([
             tf.clip_by_value(self.network[:, 0], 0.0, 1.0), self.network[:, 1], self.network[:, 2],
             self.network[:, 3], tf.clip_by_value(self.network[:, 4], 0.0, 1.0), self.network[:, 5]
         ], axis=1)
+        return self.network
 
 if __name__ == '__main__':
     """
@@ -127,6 +133,6 @@ if __name__ == '__main__':
     net(glimpse_result)
     """
 
-    classification_result = tf.placeholder(tf.float32, [None, 512])
-    net = EmissionNetwork()
+    classification_result = tf.placeholder(tf.float32, [None, 512, 128])
+    net = ClassificationNetwork()
     net(classification_result)

@@ -8,16 +8,13 @@ def transform(feature_tensor, theta_tensor, out_height=40, out_width=40):
     transformation_matrix = tf.reshape(theta_tensor, [-1, 2, 3])
 
     # Generate mesh grid points
-    grids = generateMeshGrid(feature_tensor, img_height, img_width)
+    grids = generateMeshGrid(out_height, out_width)
 
     # Transform process
-    #T_g = tf.matmul(transformation_matrix, grids)
-    #T_g = tf._batch_mat_mul(transformation_matrix, grids)
-    T_g = tf.scan(lambda a, single_theta: tf.matmul(single_theta, grids), transformation_matrix)
-
-
-
-
+    #T_g = tf.scan(lambda prev, curr: tf.matmul(curr, grids), transformation_matrix, infer_shape=False)
+    transformation_matrix = tf.reshape(transformation_matrix, [-1, 3])
+    T_g = tf.matmul(transformation_matrix, grids)
+    T_g = tf.reshape(T_g, [-1, 2, 1600])
     
     x_s = T_g[:, 0]
     y_s = T_g[:, 1]
@@ -28,10 +25,9 @@ def transform(feature_tensor, theta_tensor, out_height=40, out_width=40):
     transformed_tensor = interpolate(feature_tensor, x_s_flat, y_s_flat, out_height, out_width)
     transformed_tensor = tf.reshape(transformed_tensor, [None])
 
-def generateMeshGrid(img_tensor, img_height, img_width): ## emit
-    batch_num, img_height, img_width, img_channel = img_tensor.shape
-    x_t, y_t = tf.meshgrid(tf.lin_space(-1.0, 1.0, img_width),
-        tf.lin_space(-1.0, 1.0, img_height)
+def generateMeshGrid(out_height, out_width):
+    x_t, y_t = tf.meshgrid(tf.lin_space(-1.0, 1.0, out_width),
+        tf.lin_space(-1.0, 1.0, out_height)
     )
     x_t_flat = tf.reshape(x_t, [1, -1])
     y_t_flat = tf.reshape(y_t, [1, -1])
@@ -60,19 +56,21 @@ def interpolate(imgs_tensor, x, y, out_height, out_width):
     y1 = tf.cast(tf.minimum(y1, img_height - 1), tf.int32)
 
     # Flat the indices (???)
-    single_pixel_indice = tf.range(batch_num, dtype=tf.int32) * img_height * img_width
-    single_pixel_indice = tf.reshape(single_pixel_indice, [1, -1])
-    base = tf.tile(single_pixel_indice, img_height * img_width)
-    base = tf.reshape(base, [-1, img_height * img_width])
-    base_y0 = base + y0 * img_width
-    base_y1 = base + y1 * img_width
+    single_pixel_indice = tf.range(batch_num, dtype=tf.int32) * imgs_tensor.shape[1] * imgs_tensor.shape[2]
+    base = tf.tile(single_pixel_indice, [out_height * out_width])
+
+
+    #base = tf.reshape(base, [-1, img_height * img_width])
+    base_y0 = base + y0 * tf.cast(img_width, tf.int32)
+    base_y1 = base + y1 * tf.cast(img_width, tf.int32)
     idx_a = base_y0 + x0
     idx_b = base_y1 + x0
     idx_c = base_y0 + x1
     idx_d = base_y1 + x1
 
     # Look up pixel
-    imgs_flat = tf.reshape(imgs_tensor, [-1, img_channel])
+    print('list type: ', type(imgs_tensor))
+    imgs_flat = tf.reshape(imgs_tensor, [-1, 1])
     Ia = imgs_flat[idx_a]
     Ib = imgs_flat[idx_b]
     Ic = imgs_flat[idx_c]
@@ -88,6 +86,6 @@ def interpolate(imgs_tensor, x, y, out_height, out_width):
 
 
 if __name__ == '__main__':
-    imgs = tf.placeholder(tf.float32, [None, 100, 100, 1])
-    theta = tf.placeholder(tf.float32, [None, 6])
+    imgs = tf.placeholder(tf.float32, [32, 100, 100, 1])
+    theta = tf.placeholder(tf.float32, [32, 6])
     transform(imgs, theta)
