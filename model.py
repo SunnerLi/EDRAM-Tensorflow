@@ -3,6 +3,12 @@ import tensorflow as tf
 import numpy as np
 
 def toL(_tensor):
+    """
+        Casting the tensor (tensorflow object) into Layer (tensorlayer object)
+
+        Arg:    _tensor - The tensor object
+        Ret:    The layer object with no other computation
+    """
     input_layer_index = -1
     while True:
         try:
@@ -74,9 +80,6 @@ class GlimpseNetwork(object):
         return self.network
 
 class RecurrentNetwork(object):
-    def __init__(self):
-        pass
-
     def __call__(self, glimpse_result):
         # Classification part RNN
         self.classification_part = tl.layers.DenseLayer(toL(glimpse_result), n_units = 2048, name='core_fc1')
@@ -91,9 +94,6 @@ class RecurrentNetwork(object):
         return self.classification_part.outputs, self.emission_part.outputs
 
 class ClassificationNetwork(object):
-    def __init__(self):
-        pass
-
     def __call__(self, lstm_result):
         self.network = tf.reshape(lstm_result, [-1, tf.cast(lstm_result.shape[1] * lstm_result.shape[2], tf.int32)])
         self.network = tl.layers.DenseLayer(toL(self.network), n_units = 1024, name='classification_fc1')
@@ -106,9 +106,6 @@ class ClassificationNetwork(object):
         return self.network.outputs
 
 class EmissionNetwork(object):
-    def __init__(self):
-        pass
-
     def __call__(self, lstm_result):
         self.network = tf.reshape(lstm_result, [-1, tf.cast(lstm_result.shape[1] * lstm_result.shape[2], tf.int32)])
         self.network = tl.layers.DenseLayer(toL(self.network), n_units = 1024, act = tf.nn.tanh, name='emission_fc')
@@ -118,21 +115,3 @@ class EmissionNetwork(object):
             self.network[:, 3], tf.clip_by_value(self.network[:, 4], 0.0, 1.0), self.network[:, 5]
         ], axis=1)
         return self.network
-
-if __name__ == '__main__':
-    """
-    transformation_result = tf.placeholder(tf.float32, [None, 40, 40, 1])
-    location_ph = tf.placeholder(tf.float32, [None, 6])
-    net = GlimpseNetwork()
-    net(location_ph, transformation_result)
-    """
-
-    """
-    glimpse_result = tf.placeholder(tf.float32, [None, 1024])
-    net = RecurrentNetwork()
-    net(glimpse_result)
-    """
-
-    classification_result = tf.placeholder(tf.float32, [None, 512, 128])
-    net = ClassificationNetwork()
-    net(classification_result)

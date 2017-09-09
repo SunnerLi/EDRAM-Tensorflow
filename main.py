@@ -1,25 +1,31 @@
-from keras.utils import to_categorical
 from model import GlimpseNetwork, RecurrentNetwork, ClassificationNetwork, EmissionNetwork
 from dataset import load
 import tensorflow as tf
 import numpy as np
 
-batch_index = 0     # to help getting next batch
+epoch = 100
 
-def next_batch(imgs, locs, labels, batch_size=32):
-    global batch_index
+def next_batch(imgs, locs, labels, batch_size=128):
     """
-    if batch_index + batch_size >= np.shape(imgs)[0]:
-        pass
+        Random shuffle and return the next batch data
+
+        Arg:    imgs        - The whole image feature array (N * 100 * 100 * 1)
+                locs        - The whole location array (N * 6)
+                labels      - The whole label one-hot array (N * 10)
+                batch_size  - The batch size in each batch
+        Ret:    The batch data about image, location and label array
     """
-    labels = to_categorical(locs, 10)
-    return imgs[batch_index:batch_index+32, :, :, :], \
-            locs[batch_index:batch_index+32, :], \
-            labels[batch_index:batch_index+32, :]
+    shuffle_index = np.arange(0, len(imgs))
+    np.random.shuffle(shuffle_index)
+    select_index = shuffle_index[:batch_size]
+    batch_img = [ imgs[i] for i in select_index ]
+    batch_loc = [ locs[i] for i in select_index ]
+    batch_label = [ labels[i] for i in select_index ]
+    return np.asarray(batch_img), np.asarray(batch_loc), np.asarray(batch_label)
 
 if __name__ == '__main__':
     # Load data & placeholder
-    train_features, train_labels, train_location = load()
+    train_features, train_location, train_labels = load()
     feature_ph = tf.placeholder(tf.float32, [None, 100, 100, 1])
     location_ph = tf.placeholder(tf.float32, [None, 6])
     label_ph = tf.placeholder(tf.int32, [None, 10])
@@ -50,10 +56,10 @@ if __name__ == '__main__':
     # Train
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
-        for i in range(100):
-            images_batch, location_batch, label_batch = next_batch(train_features, train_location, train_labels)
+        for i in range(epoch):
+            image_batch, location_batch, label_batch = next_batch(train_features, train_location, train_labels)
             _loss_value, _ = sess.run([loss_sum, train_op], feed_dict={
-                feature_ph: images_batch,
+                feature_ph: image_batch,
                 location_ph: location_batch,
                 label_ph: label_batch
             })

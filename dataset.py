@@ -12,8 +12,9 @@ def load(file_name='mnist_clusttered.hdf5'):
     """
     clustter_file = h5py.File('mnist_clusttered.hdf5', 'r')
     return theanoOrder2TensorflowOrder(clustter_file['features']), \
-            clustter_file['labels'], \
-            clustter_file['locations']
+            clustter_file['locations'], \
+            to_categorical(clustter_file['labels'], 10)
+            
 
 def theanoOrder2TensorflowOrder(_tensor):
     """
@@ -23,6 +24,18 @@ def theanoOrder2TensorflowOrder(_tensor):
         Ret:    The numpy object with tensorflow order
     """
     return np.swapaxes(np.swapaxes(_tensor, 1, 2), 2, 3)
+
+def to_categorical(y, num_classes=None):
+    """
+        The implementation of to_categorical which is defined in Keras
+    """
+    y = np.array(y, dtype='int').ravel()
+    if not num_classes:
+        num_classes = np.max(y) + 1
+    n = y.shape[0]
+    categorical = np.zeros((n, num_classes))
+    categorical[np.arange(n), y] = 1
+    return categorical
 
 if __name__ == '__main__':
     load()

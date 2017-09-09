@@ -1,5 +1,12 @@
 import tensorflow as tf
 
+"""
+    This code isn't used in the final program.
+    The EDRAM use SpatialTransformer2dAffineLayer which is provided by tensorlayer
+    There's another implementation under tensorflow/model folder:
+    https://github.com/tensorflow/models/blob/master/transformer/spatial_transformer.py
+"""
+
 def transform(feature_tensor, theta_tensor, out_height=40, out_width=40):
     # Form as following :
     # [ [t1, t2, t3]
@@ -83,9 +90,3 @@ def interpolate(imgs_tensor, x, y, out_height, out_width):
     wd = tf.expand_dims((x - x0) * (y - y0), axis=-1)
     output = tf.reduce_sum([wa * Ia, wb * Ib, wc * Ic, wd * Id], axis=0)
     return output
-
-
-if __name__ == '__main__':
-    imgs = tf.placeholder(tf.float32, [32, 100, 100, 1])
-    theta = tf.placeholder(tf.float32, [32, 6])
-    transform(imgs, theta)
